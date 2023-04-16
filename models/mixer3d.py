@@ -39,10 +39,10 @@ def FeedForward(dim, expansion_factor=4, dropout=0., dense=nn.Linear):
     )
 
 
-class MLPMixer3D(nn.Module):
+class Mixer3D(nn.Module):
     def __init__(self, num_patches, channels, patch_size, dim, depth, num_classes,
                  expansion_factor=4, dropout=0.):
-        super(MLPMixer3D, self).__init__()
+        super(Mixer3D, self).__init__()
 
         chan_first, chan_last = partial(nn.Conv1d, kernel_size=1), nn.Linear
         self.criterion = nn.BCELoss()
@@ -162,11 +162,11 @@ class MLPMixer3D(nn.Module):
         return losses / len(train_loader)
 
 
-class RegMLPMixer3D(MLPMixer3D):
+class RegMixer3D(Mixer3D):
     def __init__(self, num_patches, channels, patch_size, dim, depth, num_classes,
                  expansion_factor=4, dropout=0., num_regmixer=1):
-        super(RegMLPMixer3D, self).__init__(num_patches, channels, patch_size, dim, depth - num_regmixer, num_classes,
-                                            expansion_factor, dropout)
+        super(RegMixer3D, self).__init__(num_patches, channels, patch_size, dim, depth - num_regmixer, num_classes,
+                                         expansion_factor, dropout)
         self.criterion = nn.MSELoss()
         chan_first, chan_last = partial(nn.Conv1d, kernel_size=1), nn.Linear
 
@@ -223,19 +223,19 @@ class RegMLPMixer3D(MLPMixer3D):
         return self.out1(fea1), self.out2(fea2)
 
 
-class FuseMlp(nn.Module):
+class FuseMixer(nn.Module):
     def __init__(self, num_patches, channels, patch_size, dim, depth, num_classes,
                  expansion_factor=4, dropout=0., pool=1, clfpat_index=None):
-        super(FuseMlp, self).__init__()
+        super(FuseMixer, self).__init__()
         self.criterion = nn.BCELoss()
         if clfpat_index is not None:
             self.clfpat_index = torch.from_numpy(clfpat_index)
         else:
             self.clfpat_index = torch.arange(num_patches)
-        self.reg_net = RegMLPMixer3D(num_patches, channels, patch_size, dim, depth, num_classes,
-                                     expansion_factor, dropout)
-        self.clf_net = MLPMixer3D(len(self.clfpat_index), channels, patch_size, dim, depth, num_classes,
+        self.reg_net = RegMixer3D(num_patches, channels, patch_size, dim, depth, num_classes,
                                   expansion_factor, dropout)
+        self.clf_net = Mixer3D(len(self.clfpat_index), channels, patch_size, dim, depth, num_classes,
+                               expansion_factor, dropout)
 
         self.dim = dim
         self.pool = pool
@@ -391,29 +391,30 @@ class FuseMlp(nn.Module):
         return losses / len(train_loader)
 
 
-def fusemlp(**kwargs):
+def fusemixer(**kwargs):
     regpre = os.environ.get('REGPREPATH')
     clfpre = os.environ.get('CLFPREPATH')
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = FuseMlp(channels=1, num_classes=1, **kwargs)
+    model = FuseMixer(channels=1, num_classes=1, **kwargs)
 
-    model.reg_net.load_state_dict(
-        torch.load(regpre, map_location=device), strict=False)
-    print('reg pretrain loaded')
-
-    model.clf_net.load_state_dict(
-        torch.load(clfpre, map_location=device), strict=False)
-    print('clf pretrain loaded')
+    if regpre:
+        model.reg_net.load_state_dict(
+            torch.load(regpre, map_location=device), strict=False)
+        print('reg pretrain loaded')
+    if clfpre:
+        model.clf_net.load_state_dict(
+            torch.load(clfpre, map_location=device), strict=False)
+        print('clf pretrain loaded')
 
     for param in model.reg_net.children():
         param.requires_grad_(False)
     return model
 
 
-def clfmlpm(**kwargs):
-    return MLPMixer3D(channels=1, num_classes=1, **kwargs)
+def clfmixer(**kwargs):
+    return Mixer3D(channels=1, num_classes=1, **kwargs)
 
 
-def regmlpm(**kwargs):
-    return RegMLPMixer3D(channels=1, num_classes=1, **kwargs)
+def regmixer(**kwargs):
+    return RegMixer3D(channels=1, num_classes=1, **kwargs)
