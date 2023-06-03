@@ -39,8 +39,16 @@ python main.py --method FuseMixer --dataset ADNI_dx --clfsetting sMCI-pMCI --bat
 
 ### Citation
 
-If you use this code, please cite the following:
+If you use this code, please cite our paper:
 
 ```text
-"Improving Alzheimer’s Disease Diagnosis with Multi-Modal PET Embedding Features by a 3D Multi-task MLP-Mixer Neural Network"
+@ARTICLE{10137746,
+  author={Zhang, Zi-Chao and Zhao, Xingzhong and Dong, Guiying and Zhao, Xing-Ming},
+  journal={IEEE Journal of Biomedical and Health Informatics}, 
+  title={Improving Alzheimer's Disease Diagnosis with Multi-Modal PET Embedding Features by a 3D Multi-task MLP-Mixer Neural Network}, 
+  year={2023},
+  volume={},
+  number={},
+  pages={1-12},
+  doi={10.1109/JBHI.2023.3280823}}
 ```
